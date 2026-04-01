@@ -1,10 +1,20 @@
 import { useState } from "react";
 import { useGameSession } from "../hooks/useGameSession";
-import { endGame, resetGame, fullResetGame, startGame, selectGame } from "../lib/api";
+import {
+  endGame,
+  resetGame,
+  fullResetGame,
+  startGame,
+  selectGame,
+  removePlayer,
+  transferHost,
+} from "../lib/api";
 import type { PlayerResult } from "../lib/types";
+import PlayerList from "../components/PlayerList";
 
 export default function Admin() {
   const { gameSession, isConnected, sendShotEvent } = useGameSession();
+  const [activeTab, setActiveTab] = useState<"gameState" | "lobbyManagement">("gameState");
   const [noContest, setNoContest] = useState(false);
   const [endGameResults, setEndGameResults] = useState<
     { playerId: string; makes: number; misses: number }[]
@@ -72,6 +82,24 @@ export default function Admin() {
     }
   }
 
+  async function handleRemovePlayer(playerId: string) {
+    setError("");
+    try {
+      await removePlayer(playerId);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to remove player");
+    }
+  }
+
+  async function handleTransferHost(playerId: string) {
+    setError("");
+    try {
+      await transferHost(playerId);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to transfer host");
+    }
+  }
+
   async function handleQuickStart() {
     setError("");
     try {
@@ -115,6 +143,60 @@ export default function Admin() {
           </div>
         )}
 
+        {/* Tabs */}
+        <div className="flex mb-4 bg-gray-800 rounded-lg p-1">
+          <button
+            onClick={() => setActiveTab("gameState")}
+            className={`flex-1 py-2 rounded-md text-sm font-medium transition-all ${
+              activeTab === "gameState"
+                ? "bg-gray-700 text-white"
+                : "text-gray-400 hover:text-white"
+            }`}
+          >
+            Game State
+          </button>
+          <button
+            onClick={() => setActiveTab("lobbyManagement")}
+            className={`flex-1 py-2 rounded-md text-sm font-medium transition-all ${
+              activeTab === "lobbyManagement"
+                ? "bg-gray-700 text-white"
+                : "text-gray-400 hover:text-white"
+            }`}
+          >
+            Lobby Management
+          </button>
+        </div>
+
+        {/* ── LOBBY MANAGEMENT TAB ── */}
+        {activeTab === "lobbyManagement" && (
+          <div>
+            {gameSession.gameState !== "lobby" ? (
+              <div className="bg-gray-800 rounded-lg p-4 text-center text-gray-400 text-sm">
+                Lobby Management is only available in lobby state.
+              </div>
+            ) : gameSession.players.length === 0 ? (
+              <div className="bg-gray-800 rounded-lg p-4 text-center text-gray-400 text-sm">
+                No players in the lobby yet.
+              </div>
+            ) : (
+              <div className="bg-gray-800 rounded-lg p-4">
+                <p className="text-xs text-gray-400 mb-3">
+                  👑 = Transfer host · ✕ = Remove player
+                </p>
+                <PlayerList
+                  players={gameSession.players}
+                  onRemove={handleRemovePlayer}
+                  onMakeHost={handleTransferHost}
+                />
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── GAME STATE TAB ── */}
+        {activeTab === "gameState" && (
+          <div>
+
         {/* State badge */}
         <div className="bg-gray-800 rounded-lg p-4 mb-4">
           <div className="flex items-center justify-between mb-2">
@@ -135,11 +217,17 @@ export default function Admin() {
             <span className="text-sm text-gray-400">Game Type</span>
             <span className="text-sm">{gameSession.gameType || "(none)"}</span>
           </div>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between mb-2">
             <span className="text-sm text-gray-400">Players</span>
             <span className="text-sm">
               {gameSession.players.filter((p) => p.ready).length}/
               {gameSession.players.length} ready
+            </span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-gray-400">King of the Court</span>
+            <span className={`text-sm ${gameSession.hotSeat ? "text-yellow-400" : "text-gray-500"}`}>
+              {gameSession.hotSeat ? "👑 ON" : "OFF"}
             </span>
           </div>
         </div>
@@ -309,6 +397,9 @@ export default function Admin() {
             {JSON.stringify(gameSession, null, 2)}
           </pre>
         </details>
+
+          </div>
+        )}
       </div>
     </div>
   );

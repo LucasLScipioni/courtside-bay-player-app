@@ -87,6 +87,40 @@ app.put("/api/players/:playerId", (req, res) => {
   }
 });
 
+app.delete("/api/players/:playerId", (req, res) => {
+  try {
+    session.removePlayer(req.params.playerId);
+    broadcastSession();
+    console.log(`[API] Player removed: ${req.params.playerId}`);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.put("/api/players/:playerId/host", (req, res) => {
+  try {
+    session.transferHost(req.params.playerId);
+    broadcastSession();
+    console.log(`[API] Host transferred to: ${req.params.playerId}`);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.put("/api/game/settings", (req, res) => {
+  try {
+    const { hotSeat } = req.body;
+    session.setHotSeat(hotSeat);
+    broadcastSession();
+    console.log(`[API] Settings updated: hotSeat=${hotSeat}`);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
 app.put("/api/game/select", (req, res) => {
   try {
     const { gameType } = req.body;

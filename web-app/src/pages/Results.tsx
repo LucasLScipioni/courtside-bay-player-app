@@ -93,6 +93,15 @@ export default function Results() {
               {winner.wins} total win(s)
               {winner.winStreak > 1 && ` · 🔥${winner.winStreak} streak`}
             </p>
+            {gameSession.hotSeat && (
+              <div className="mt-3 bg-yellow-500/20 border border-yellow-500/50 rounded-lg px-4 py-2 inline-block">
+                <p className="text-yellow-300 text-sm font-semibold">
+                  {winner.playerId === playerId
+                    ? "👑 Congratulations, you are the new Host! — you choose the next game!"
+                    : `👑 ${winner.name} is the new Host — they choose the next game!`}
+                </p>
+              </div>
+            )}
           </div>
         )}
 

@@ -15,6 +15,7 @@ export default function CharacterGrid({
       {CHARACTERS.map((char) => (
         <button
           key={char.id}
+          type="button"
           onClick={() => onSelect(char.id)}
           className={`p-4 rounded-lg border-2 text-center transition-all ${
             selected === char.id

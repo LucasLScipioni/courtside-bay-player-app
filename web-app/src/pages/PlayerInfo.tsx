@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { registerPlayer, updatePlayer, getGameSession } from "../lib/api";
+import { registerPlayer, updatePlayer, getGameSession, setHotSeat } from "../lib/api";
 import { useGameSession } from "../hooks/useGameSession";
 import CharacterGrid from "../components/CharacterGrid";
 
@@ -12,6 +12,8 @@ export default function PlayerInfo() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [isHostPlayer, setIsHostPlayer] = useState(false);
+  const [hotSeatEnabled, setHotSeatEnabled] = useState(false);
   const initCalled = useRef(false);
 
   // On mount: register or reconnect
@@ -59,6 +61,7 @@ export default function PlayerInfo() {
         try {
           const player = await registerPlayer();
           localStorage.setItem("playerId", player.playerId);
+          if (player.isHost) setIsHostPlayer(true);
         } catch {
           setError("Could not connect to server. Retrying...");
         }
@@ -96,6 +99,9 @@ export default function PlayerInfo() {
         name: name.trim(),
         characterId,
       });
+      if (isHostPlayer) {
+        await setHotSeat(hotSeatEnabled);
+      }
       navigate("/lobby");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to update");
@@ -146,6 +152,27 @@ export default function PlayerInfo() {
             </label>
             <CharacterGrid selected={characterId} onSelect={setCharacterId} />
           </div>
+
+          {isHostPlayer && (
+            <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={hotSeatEnabled}
+                  onChange={(e) => setHotSeatEnabled(e.target.checked)}
+                  className="mt-1 w-4 h-4 rounded accent-orange-500"
+                />
+                <div>
+                  <div className="font-medium text-sm">
+                    👑 King of the Court
+                  </div>
+                  <div className="text-xs text-gray-400 mt-0.5">
+                    Winner of each game becomes the Host and chooses the next game.
+                  </div>
+                </div>
+              </label>
+            </div>
+          )}
 
           <button
             type="submit"

@@ -61,6 +61,7 @@ The Game Controller:
   "bayId": "bay_001",
   "gameWinner": null,
   "noContest": false,
+  "hotSeat": false,
   "results": [],
   "players": [
     {
@@ -139,6 +140,9 @@ All endpoints are on `http://[LINUX-IP]:3001`. CORS is open.
 | `GET` | `/api/game-session` | — | Returns current GameSession |
 | `POST` | `/api/players` | — | Registers a placeholder player, returns `{ playerId }` |
 | `PUT` | `/api/players/:playerId` | `{ name, characterId }` | Updates player info, sets `ready: true` |
+| `DELETE` | `/api/players/:playerId` | — | Removes player; promotes next in order to host if needed |
+| `PUT` | `/api/players/:playerId/host` | — | Transfers host to this player |
+| `PUT` | `/api/game/settings` | `{ hotSeat }` | Toggle King of the Court mode (lobby only) |
 | `PUT` | `/api/game/select` | `{ gameType }` | Host selects a game mode |
 | `POST` | `/api/game/start` | — | Starts the game (requires gameType + ≥2 ready players) |
 | `POST` | `/api/game/end` | `{ noContest, results }` | Ends game with results or no contest |
@@ -191,9 +195,11 @@ gameState = "finished"               → /results
 - **First player to join** = host (`isHost: true`, `order: 0`)
 - **Reconnection**: localStorage stores only `playerId`. On any page load, GET /api/game-session recovers full state.
 - **Real-time updates**: `useGameSession` hook maintains live state via WebSocket. Every page observes `gameState` and redirects automatically when it changes.
-- **Host vs Players**: Host sees 2 tabs in Lobby (Players + Games). Players see only the player list.
+- **Host vs Players**: Host sees 2 tabs in Lobby (Players + Games) + player management actions. Players see the list and can edit their own info.
 - **Start Game**: Only host can trigger. Requires `gameType !== ""` and ≥2 ready players.
-- **Return to Lobby**: Only host can reset after a finished game.
+- **Leave Lobby**: Any player (including host) can leave. If host leaves, next player in order becomes host automatically.
+- **Return to Lobby**: Only host can reset after a finished game. If King of the Court is active, the winner becomes host automatically and sees the reset button.
+- **King of the Court mode**: Set by the host during registration. When active, the winner of each game is automatically transferred `isHost` by the server at `endGame`. They choose the next game and start it.
 
 ### Characters (current — Phase 1 placeholders)
 
@@ -228,7 +234,7 @@ courtside-bay-player-app/
 │   │   │   └── Admin.tsx               # /admin — staff control panel
 │   │   ├── components/
 │   │   │   ├── CharacterGrid.tsx       # 6 character cards, selectable
-│   │   │   ├── PlayerList.tsx          # Player list with status/wins/streak
+│   │   │   ├── PlayerList.tsx          # Player list with tap modal — edit self, make host, remove
 │   │   │   └── GameSelector.tsx        # Game mode cards (knockout + coming soon)
 │   │   ├── hooks/
 │   │   │   └── useGameSession.ts       # WebSocket hook — live GameSession state
@@ -286,12 +292,17 @@ If not set, the web app auto-derives the URL from the current hostname (port 300
 
 Everything functional, minimal styling (dark background, Tailwind utility classes).
 
-- ✅ Game Controller with full API, WebSocket, broadcast, admin override
+- ✅ Game Controller with full API (11 routes), WebSocket, broadcast
 - ✅ PlayerInfo screen — register, name input, character selection, reconnection
+- ✅ King of the Court checkbox on registration (host only) — winner auto-becomes host
 - ✅ Lobby screen — real-time player list, host tabs (Players + Games), Start button
+- ✅ Leave Lobby button for all players including host
+- ✅ Player management — host can remove players or transfer host via tap modal
+- ✅ Edit own profile — any player can edit name + character from the lobby via tap modal
 - ✅ Game screen — static "in progress" display
 - ✅ Results screen — leaderboard with positions/makes/misses, No Contest mode, winner highlight
-- ✅ Admin panel — Shot Override (MAKE/MISS), End Game Builder with position reordering, No Contest checkbox, Reset controls, live JSON debug
+- ✅ King of the Court banner on Results screen when mode is active
+- ✅ Admin panel — two tabs: Game State (controls) + Lobby Management (remove/transfer host)
 - ✅ Auto-redirect based on gameState from any screen
 - ✅ Reconnection via localStorage playerId
 - ✅ Wins and winStreak accumulate across games in a session
@@ -410,6 +421,7 @@ Players' phones ──WiFi──► Linux :3000 (web app)
 - **React StrictMode double-mount**: Fixed with `useRef` guard in `PlayerInfo.tsx`. The init function only runs once even though StrictMode mounts twice in dev.
 - **Port conflict**: If port 3001 is taken, Game Controller won't start. Kill the conflicting process first.
 - **Character assets**: Currently emoji placeholders. Real assets pending from Unreal dev.
+- **`···` indicator on PlayerList**: Only appears on rows that have actions available. Tapping opens a bottom-sheet modal — own row shows edit form (name + character), other rows show Make Host / Remove actions (host only).
 - **startGame validation**: Requires `gameType !== ""` AND `readyCount >= 2`. The Admin panel has a "Quick Start" button that auto-selects knockout to bypass the game selection step for testing.
 
 ---
@@ -426,3 +438,5 @@ Players' phones ──WiFi──► Linux :3000 (web app)
 | **No Contest** | Game ended without results — no stats impact, all players see "No Contest" |
 | **winStreak** | Consecutive wins for a player; resets to 0 on any loss |
 | **ready** | A player with both `name` and `characterId` set |
+| **King of the Court** | Game mode where the winner automatically becomes the new Host after each game |
+| **hotSeat** | The `GameSession` field that stores whether King of the Court mode is active |

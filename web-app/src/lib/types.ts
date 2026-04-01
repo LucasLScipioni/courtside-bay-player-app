@@ -23,6 +23,7 @@ export interface GameSession {
   bayId: string;
   gameWinner: string | null;
   noContest: boolean;
+  hotSeat: boolean;
   results: PlayerResult[];
   players: Player[];
 }

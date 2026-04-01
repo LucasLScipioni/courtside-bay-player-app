@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useGameSession } from "../hooks/useGameSession";
-import { selectGame, startGame } from "../lib/api";
+import { selectGame, startGame, removePlayer, transferHost, updatePlayer } from "../lib/api";
 import PlayerList from "../components/PlayerList";
 import GameSelector from "../components/GameSelector";
 
@@ -68,6 +68,43 @@ export default function Lobby() {
     }
   }
 
+  async function handleLeave() {
+    const id = localStorage.getItem("playerId");
+    if (!id) return;
+    setError("");
+    try {
+      await removePlayer(id);
+      localStorage.removeItem("playerId");
+      navigate("/", { replace: true });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to leave lobby");
+    }
+  }
+
+  async function handleMakeHost(targetPlayerId: string) {
+    setError("");
+    try {
+      await transferHost(targetPlayerId);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to transfer host");
+    }
+  }
+
+  async function handleRemovePlayer(targetPlayerId: string) {
+    setError("");
+    try {
+      await removePlayer(targetPlayerId);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to remove player");
+    }
+  }
+
+  async function handleEditSelf(name: string, characterId: string) {
+    const id = localStorage.getItem("playerId");
+    if (!id) return;
+    await updatePlayer(id, { name, characterId });
+  }
+
   return (
     <div className="min-h-screen flex flex-col p-6">
       <div className="max-w-md mx-auto w-full">
@@ -114,6 +151,9 @@ export default function Lobby() {
             <PlayerList
               players={gameSession.players}
               currentPlayerId={playerId}
+              onRemove={isHost ? handleRemovePlayer : undefined}
+              onMakeHost={isHost ? handleMakeHost : undefined}
+              onEditSelf={handleEditSelf}
             />
           </div>
         )}
@@ -154,6 +194,13 @@ export default function Lobby() {
                 : "Ready! Waiting for host to start..."}
             </div>
           )}
+
+          <button
+            onClick={handleLeave}
+            className="w-full mt-3 py-2 rounded-lg text-sm text-gray-400 hover:text-red-400 border border-gray-700 hover:border-red-400/50 transition-all"
+          >
+            Leave Lobby
+          </button>
         </div>
       </div>
     </div>

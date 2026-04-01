@@ -10,6 +10,7 @@ function createFreshSession() {
     bayId: process.env.BAY_ID || "bay_001",
     gameWinner: null,
     noContest: false,
+    hotSeat: false,
     results: [],
     players: [],
   };
@@ -59,6 +60,45 @@ function updatePlayer(playerId, { name, characterId }) {
 
   player.ready = player.name.trim() !== "" && player.characterId !== "";
   return player;
+}
+
+function removePlayer(playerId) {
+  if (session.gameState !== "lobby") {
+    throw new Error("Cannot remove players outside of lobby");
+  }
+
+  const index = session.players.findIndex((p) => p.playerId === playerId);
+  if (index === -1) throw new Error("Player not found");
+
+  const wasHost = session.players[index].isHost;
+  session.players.splice(index, 1);
+
+  // Re-assign orders sequentially
+  session.players.forEach((p, i) => {
+    p.order = i;
+  });
+
+  // Reassign host to first remaining player if needed
+  if (wasHost && session.players.length > 0) {
+    session.players[0].isHost = true;
+  }
+}
+
+function transferHost(playerId) {
+  const target = session.players.find((p) => p.playerId === playerId);
+  if (!target) throw new Error("Player not found");
+
+  session.players.forEach((p) => {
+    p.isHost = false;
+  });
+  target.isHost = true;
+}
+
+function setHotSeat(value) {
+  if (session.gameState !== "lobby") {
+    throw new Error("Cannot change settings outside of lobby");
+  }
+  session.hotSeat = !!value;
 }
 
 function selectGame(gameType) {
@@ -118,6 +158,11 @@ function endGame({ noContest = false, results = [] } = {}) {
         p.winStreak = 0;
       }
     });
+
+    // King of the Court: winner becomes new host
+    if (session.hotSeat) {
+      transferHost(winner.playerId);
+    }
   }
 }
 
@@ -145,6 +190,9 @@ module.exports = {
   getPlayer,
   addPlayer,
   updatePlayer,
+  removePlayer,
+  transferHost,
+  setHotSeat,
   selectGame,
   startGame,
   endGame,

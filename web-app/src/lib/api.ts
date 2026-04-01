@@ -37,6 +37,21 @@ export function updatePlayer(
   });
 }
 
+export function removePlayer(playerId: string): Promise<{ success: boolean }> {
+  return request(`/api/players/${playerId}`, { method: "DELETE" });
+}
+
+export function transferHost(playerId: string): Promise<{ success: boolean }> {
+  return request(`/api/players/${playerId}/host`, { method: "PUT" });
+}
+
+export function setHotSeat(value: boolean): Promise<{ success: boolean }> {
+  return request("/api/game/settings", {
+    method: "PUT",
+    body: JSON.stringify({ hotSeat: value }),
+  });
+}
+
 export function selectGame(gameType: string): Promise<{ success: boolean }> {
   return request("/api/game/select", {
     method: "PUT",
